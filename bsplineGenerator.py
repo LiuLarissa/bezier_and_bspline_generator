@@ -1,53 +1,52 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def bsplineGenerator(control_points,num_points, degree):
-    m,k=len(control_points),degree
-    knot_vector=[0]*(m+k+1)
-    for i in range(4,m+k+1):
-        if i<m:knot_vector[i]=i-k
-        else:knot_vector[i]=m-k
-    
-    t=np.linspace(0,m-k,num_points)
-    # base of order 0
-    base=np.zeros((m+k,num_points))
-    for i in range(m+k):
+def generateBspline(control_points,order,num_points):
+    n=len(control_points)
+
+    # knot vector
+    V=[0 for i in range(n+1+order)]
+    k=1
+    for i in range(order+1,len(V),1):
+        V[i]=k
+        if k!=n-order:k+=1
+
+    t=np.linspace(0,n-order,num_points)
+    coeff=np.zeros((len(V)-1,num_points))
+
+    # order 0
+    for i in range(len(V)-1):
         for j in range(num_points):
-            if knot_vector[i]!=knot_vector[i+1]:
-                time=t[j]
-                if knot_vector[i]<=time<=knot_vector[i+1]:
-                    base[i][j]=1
+            time=t[j]
+            if i==len(V)-order-2:
+                if V[i]<=time<=V[i+1]:coeff[i][j]=1
+            else:
+                if V[i]<=time<V[i+1]: coeff[i][j]=1
     
-    # base of order k
-    for order in range(1,k+1):
-        baseOrder=np.zeros((m+k-order,num_points))
-        for i in range(m+k-order):
+    # order recursion
+    for k in range(1,order+1):
+        l=len(coeff)
+        _coeff=np.zeros((l-1,num_points))
+        for i in range(l-1):
             for j in range(num_points):
                 time=t[j]
-                coef=[0,0]
-                if knot_vector[i+order]!=knot_vector[i]:
-                    coef[0]=(time-knot_vector[i])/(knot_vector[i+order]-knot_vector[i])
-                if knot_vector[i+order+1]!=knot_vector[i+1]:
-                    coef[1]=(knot_vector[i+order+1]-time)/(knot_vector[i+order+1]-knot_vector[i+1])
-                baseOrder[i][j]=coef[0]*base[i][j]+coef[1]*base[i+1][j]
-        base=baseOrder
-    
-    curve_points=np.zeros((num_points,2))
+                if V[i+k]!=V[i]:_coeff[i][j]+=(time-V[i])*coeff[i][j]/(V[i+k]-V[i])
+                if V[i+k+1]!=V[i+1]:_coeff[i][j]+=(V[i+k+1]-time)*coeff[i+1][j]/(V[i+k+1]-V[i+1])
+        coeff=_coeff
+
+    x=[0 for i in range(num_points)]
+    y=[0 for i in range(num_points)]
+
     for i in range(num_points):
-        array=[0]*m
-        for j in range(m):
-            array[j]=base[j][i]
-        curve_points[i]=np.dot(array,control_points)
-    drawBspline(control_points,curve_points)
+        for p in range(n):
+            point=control_points[p]
+            x[i]+=coeff[p][i]*point[0]
+            y[i]+=coeff[p][i]*point[1]
     
-def drawBspline(control_points,curve_points):
     fig,ax=plt.subplots()
     ax.plot(control_points[:,0],control_points[:,1],'o--',color='grey')
-    ax.plot(curve_points[:,0],curve_points[:,1])
+    ax.plot(x,y)
     plt.show()
 
-control_points=np.array([[0, 0], [2, 3], [4, 4], [6, 4],[7,0]])
-bsplineGenerator(control_points,40,3)
-
-    
-    
+control_points=np.array([[0, 0], [2, 3], [4, 4], [6, 4],[7,0],[10,5],[15,0]])
+generateBspline(control_points,3,100)
