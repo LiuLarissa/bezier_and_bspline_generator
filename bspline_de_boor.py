@@ -4,7 +4,7 @@ import math
 
 def generateBezierControlpoints(controlPoints,k):
     n=len(controlPoints)
-    N=n-k
+    N=n-k  # N bezier curves
     knotVector=[0 for i in range(k)]
     knotVector.extend([i for i in range(1,N)])
     knotVector.extend([N for i in range(k)])
@@ -18,7 +18,8 @@ def generateBezierControlpoints(controlPoints,k):
         polars[key]=controlPoints[i]
         points.append(key)
     
-    for i in range(k-1):
+
+    for j in range(k-1):
         tmp=[]
         for i in range(len(points)-1):
             diffs=keyDiff(points[i],points[i+1])
@@ -30,15 +31,41 @@ def generateBezierControlpoints(controlPoints,k):
                 polars[n]=v
                 m-=1
         points=tmp
+
+    def pointMinus(point):
+        length=len(point)
+        for i in range(length-1,0,-1):
+            if point[i]==point[i-1]:
+                if i==1:return str(int(point[0])-1)+point[1:]
+                else:continue
+            else:
+                return point[0:i]+str(int(point[i])-1)+point[i+1:]
     
+    def pointAdd(point):
+        length=len(point)
+        for i in range(length-1):
+            if point[i]==point[i+1]:
+                if i==length-2:return point[0:i+1]+str(int(point[i+1])+1)
+                else:continue
+            else:
+                return point[0:i]+str(int(point[i])+1)+point[i+1:]
+
+    def getBezierControlPoint(point):
+        if point in polars.keys():return polars[point]
+        else:
+            pointM=getBezierControlPoint(pointMinus(point))
+            pointA=getBezierControlPoint(pointAdd(point))
+            v=0.5*(pointM+pointA)
+            polars[point]=v
+            return v
+
     for i in range(N):
-        start=''.join(map(str,[i for j in range(k)]))
-        bezierControlpoints=[start]
+        bezierControlPoints=[]
         for j in range(k):
-            lastPoint=bezierControlpoints[-1]
-            newP=lastPoint[:k-j-1]+''.join(map(str,[i+1 for m in range(j+1)]))
-            bezierControlpoints.append(newP)
-        arrayPoints=np.array([polars[key] for key in bezierControlpoints])
+            point=str(i)*(k-j)+str(i+1)*j
+            bezierControlPoints.append(point)
+        bezierControlPoints.append(str(i+1)*k)
+        arrayPoints=np.array([getBezierControlPoint(key) for key in bezierControlPoints])
         print(arrayPoints)
         curvePoints=generate_bezier_curve(arrayPoints)
         ax.plot(curvePoints[:,0],curvePoints[:,1])
@@ -59,21 +86,32 @@ def generate_bezier_curve(control_points, num_points=20):
 
     return curve_points
 
-
 def keyDiff(key1,key2):
+    if key1==key2:return []
     diffs=[key1]
-    n=len(key1)
-    j=n-1
-    while(j>0):
-        if key1[j]==key2[j]:j-=1
-        else:break
     
-    for i in range(j):
-        p=diffs[-1]
-        if p[i]!=key2[i]:
-            newP=p[0:i]+key2[i]+p[i+1:]
-            diffs.append(newP)
-    return diffs[1:]
+    def subKeyDiff(key1,key2):
+        n=len(key1)
+        for i in range(n):
+            if key1[i]==key2[i]:
+                if i==n-1: diffs.append(key2)
+                else:continue
+            else:
+                if i!=n-1:
+                    if key1[i+1]==key2[i]:
+                        newP=key1[0:i]+key2[i]+key1[i+1:]
+                        diffs.append(newP)
+                        return
+                    else:continue
+                else: 
+                    newP=key1[0:i]+key2[i]
+                    diffs.append(newP)
+                    return
 
-controlPoints=np.array([[0, 0], [2, 3], [6, 3], [9, 0],[10,3],[12,2]])
-generateBezierControlpoints(controlPoints,3)
+    while diffs[-1]!=key2:
+        subKeyDiff(diffs[-1],key2)
+    return diffs[1:len(diffs)-1]
+    
+
+controlPoints=np.array([[0, 0], [2, 3], [6, 3], [9, 0],[10,3],[12,3],[15,2],[16,0]])
+generateBezierControlpoints(controlPoints,4)
